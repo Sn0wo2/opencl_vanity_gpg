@@ -85,7 +85,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     if let Some(ref output_dir) = ARGS.output {
-        warn!("Output directory does not exist, creating it: {output_dir}");
+        if !Path::new(output_dir).try_exists()? {
+            warn!("Output directory does not exist, creating it: {output_dir}");
+        }
         fs::create_dir_all(output_dir)?;
     }
 
