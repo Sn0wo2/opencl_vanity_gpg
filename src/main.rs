@@ -10,11 +10,11 @@ use std::{
     sync::{mpsc::*, LazyLock},
     thread,
     time::Instant,
-    usize,
 };
 use utils::ARGS;
 use utils::*;
 
+mod ssh;
 mod utils;
 
 fn main() -> anyhow::Result<()> {
@@ -33,11 +33,24 @@ fn main() -> anyhow::Result<()> {
     }
 
     let device = match ARGS.device {
-        Some(i) => device_list[i].device,
+        Some(i) => device_list
+            .get(i)
+            .ok_or_else(|| anyhow::anyhow!("No OpenCL device #{i}"))?
+            .device,
+        None if ARGS.ssh => device_list
+            .iter()
+            .find(|entry| matches!(entry.device.info(ocl::core::DeviceInfo::Type), Ok(ocl::core::DeviceInfoResult::Type(kind)) if kind.contains(ocl::flags::DEVICE_TYPE_GPU)))
+            .or_else(|| device_list.first())
+            .ok_or_else(|| anyhow::anyhow!("No OpenCL devices found"))?
+            .device,
         None => Device::first(Platform::default())?,
     };
 
     info!("Using device: {}", device.name()?);
+
+    if ARGS.ssh {
+        return ssh::run(&ARGS, device, &bars);
+    }
 
     let dimension = match ARGS.thread {
         Some(v) => v,
@@ -179,7 +192,10 @@ fn main() -> anyhow::Result<()> {
         (dimension * iteration) as u64,
         ARGS.max_time_range.map(|x| x as u64).unwrap_or(u64::MAX),
     );
-    let bar = bars.add(init_progress_bar(estimate));
+    let bar = bars.add(init_progress_bar(estimate, "hash/s"));
+    if ARGS.no_progress {
+        bar.set_draw_target(indicatif::ProgressDrawTarget::hidden());
+    }
 
     loop {
         debug!("Send key to OpenCL thread");

@@ -1,15 +1,21 @@
 use clap::{Parser, ValueEnum};
 use std::sync::LazyLock;
 
-pub static ARGS: LazyLock<Args> = LazyLock::new(if cfg!(debug_assertions) {
-    Args::default
-} else {
-    Args::parse
-});
+pub static ARGS: LazyLock<Args> = LazyLock::new(Args::parse);
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
+    #[arg(long, help = "Generate vanity SSH Ed25519 keys instead of OpenPGP keys", conflicts_with_all = ["cipher_suite", "user_id", "filter", "thread", "iteration", "future_timestamp", "start_timestamp", "max_time_range"])]
+    pub ssh: bool,
+
+    #[arg(
+        long,
+        requires = "ssh",
+        help = "SSH candidates per OpenCL launch, rounded down to a multiple of 32 (minimum: 32; default: 1048576 GPU, 65536 CPU)"
+    )]
+    pub batch: Option<usize>,
+
     /// Cipher suite of the vanity key
     /// ed25519, ecdsa-****, rsa**** => Primary key
     /// cv25519,  ecdh-****          => Subkey
@@ -29,8 +35,22 @@ pub struct Args {
     /// > Example:
     /// * 11XXXX** may output a fingerprint ends with 11222234 or 11AAAABF
     /// * 11XXYYZZ may output a fingerprint ends with 11223344 or 11AABBCC
-    #[arg(short, long, verbatim_doc_comment)]
+    #[arg(
+        short,
+        long,
+        verbatim_doc_comment,
+        help = "GPG fingerprint pattern; with --ssh, a case-sensitive literal suffix of the full SSH public key line (e.g. love matches keys ending in love)",
+        long_help = "GPG: up to 40 characters, case-insensitive and right-aligned. 0-9A-F are fixed; repeated G-Z letters require equal digits. Example: 11XXYYZZ.\nSSH (--ssh): by default, a case-sensitive literal suffix of the full ssh-ed25519 public key line, not its SHA256 fingerprint: -p love matches lines ending in love, no escaping or quotes needed. With --regex, the original upstream regex applies instead on the full public key line: Base64 literals, character classes anywhere, and ^/$ anchors, but repetition, dot, negated classes and multi-character alternatives are unsupported. Examples: love; --regex -p 'love$'; --regex -p '[pP][cC][aA][rR]'."
+    )]
     pub pattern: Option<String>,
+
+    #[arg(
+        long,
+        requires = "ssh",
+        default_value_t = false,
+        help = "With --ssh, match --pattern as the original upstream regex on the full SSH public key line instead of a literal suffix"
+    )]
+    pub regex: bool,
 
     /// OpenCL kernel function for uint h[5] for matching fingerprints
     /// Ignore the pattern and no estimate is given if this has been set
@@ -94,29 +114,6 @@ pub struct Args {
     /// future_timestamp = false: search from (start_timestamp - max_time_range) to start_timestamp
     #[arg(long, verbatim_doc_comment)]
     pub max_time_range: Option<u32>,
-}
-
-impl Default for Args {
-    fn default() -> Self {
-        Self {
-            cipher_suite: CipherSuite::Ed25519,
-            user_id: String::from("Dummy <dummy@example.com>"),
-            pattern: Some(String::from("XXXYYYZZZWWW")),
-            filter: None,
-            output: None,
-            device: None,
-            thread: None,
-            iteration: 512,
-            timeout: None,
-            oneshot: true,
-            no_progress: true,
-            no_secret_key_logging: false,
-            list_device: false,
-            future_timestamp: false,
-            start_timestamp: None,
-            max_time_range: None,
-        }
-    }
 }
 
 /// Cipher Suites

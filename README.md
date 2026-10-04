@@ -119,6 +119,9 @@ xsCkD3wdoVaA7t/BAQCvPyuVmtJN4M8gsYNRZYEfLwb1BIckohZv+svENGSqAw==
 
 一个 Curve25519 的密钥由用来签名和认证的 Ed25519 主密钥和用来加密的 Cv25519 子密钥组成。VanityGPG [只能生成主密钥为“靓号”的密钥](https://github.com/RedL0tus/VanityGPG/issues/5)，而这个项目也可以生成子密钥为“靓号”的密钥（只需要添加参数 `-c cv25519` 即可）。对于其他 NISP P-\*\*\* 的椭圆曲线的密钥也是类似的。
 
+SSH后端移植自 [pcarrier/vanity-keygen](https://github.com/pcarrier/vanity-keygen/tree/eed2b9c2b9227a20d88bdbd275ac17e333617219)  
+声明见 [licenses/vanity-keygen-ISC.txt](licenses/vanity-keygen-ISC.txt)。
+
 # 性能对比
 
 | Repo | 计算方式 | 速度（hash/s） | 注释 |

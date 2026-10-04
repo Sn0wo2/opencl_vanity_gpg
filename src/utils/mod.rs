@@ -62,34 +62,37 @@ pub fn init_logger() -> MultiProgress {
     multi
 }
 
-pub fn init_progress_bar(estimate: Option<f64>) -> ProgressBar {
-    let bar = match estimate {
+pub fn init_progress_bar(estimate: Option<f64>, unit: &'static str) -> ProgressBar {
+    let bar = match estimate.filter(|value| value.is_finite() && *value < u64::MAX as f64) {
         Some(estimate) => ProgressBar::new(estimate as u64),
         None => ProgressBar::new_spinner(),
     };
 
     bar.set_style(
         ProgressStyle::default_spinner()
-            .template("[{elapsed_precise}] {bar:50.cyan/blue} {progress} {rate} > {eta_precise}")
+            .template(if bar.length().is_some() {
+                "[{elapsed_precise}] {bar:50.cyan/blue} {progress} {rate} > {eta_precise}"
+            } else {
+                "[{elapsed_precise}] {spinner} {progress} {rate}"
+            })
             .unwrap()
             .progress_chars("##-")
-            .with_key("progress", |state: &ProgressState, w: &mut dyn Write| {
-                write!(
-                    w,
-                    "{}/{}",
-                    format_number(state.pos() as f64),
-                    match state.len() {
-                        None => "???".to_string(),
-                        Some(x) => format_number(x as f64),
+            .with_key(
+                "progress",
+                move |state: &ProgressState, w: &mut dyn Write| {
+                    write!(w, "{}", format_number(state.pos() as f64)).unwrap();
+                    if let Some(estimate) = estimate {
+                        write!(w, "/{}", format_number(estimate)).unwrap();
                     }
-                )
-                .unwrap()
-            })
-            .with_key("rate", |state: &ProgressState, w: &mut dyn Write| {
+                },
+            )
+            .with_key("rate", move |state: &ProgressState, w: &mut dyn Write| {
                 write!(
                     w,
-                    "{} hash/s",
-                    format_number((state.pos() as f64) / state.elapsed().as_secs_f64()),
+                    "{} {unit}",
+                    format_number(
+                        (state.pos() as f64) / state.elapsed().as_secs_f64().max(f64::EPSILON)
+                    ),
                 )
                 .unwrap()
             }),
@@ -100,6 +103,7 @@ pub fn init_progress_bar(estimate: Option<f64>) -> ProgressBar {
 
 pub fn format_number(v: impl Into<f64>) -> String {
     match Into::<f64>::into(v) {
+        v if v >= 1e15f64 => format!("{v:.02e}"),
         v if v >= 1e12f64 => {
             format!("{:.02}T", v / 1e12f64)
         }
