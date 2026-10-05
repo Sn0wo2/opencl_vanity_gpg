@@ -29,9 +29,13 @@ GitHub Actions 有自动编译好的二进制文件。
 
 ```console
 $ opencl_vanity_gpg -h
-Usage: opencl_vanity_gpg [OPTIONS]
+Usage: opencl_vanity_gpg.exe [OPTIONS]
 
 Options:
+      --ssh
+          Generate vanity SSH Ed25519 keys instead of OpenPGP keys
+      --batch <BATCH>
+          SSH candidates per OpenCL launch, rounded down to a multiple of 32 (minimum: 32; default: 1048576 GPU, 65536 CPU)
   -c, --cipher-suite <CIPHER_SUITE>
           Cipher suite of the vanity key
           ed25519, ecdsa-****, rsa**** => Primary key
@@ -40,14 +44,9 @@ Options:
   -u, --user-id <USER_ID>
           OpenPGP compatible user ID [default: "Dummy <dummy@example.com>"]
   -p, --pattern <PATTERN>
-          A pattern less than 40 chars for matching fingerprints
-          > Format:
-          * 0-9A-F are fixed, G-Z are wildcards
-          * Other chars will be ignored
-          * Case insensitive
-          > Example:
-          * 11XXXX** may output a fingerprint ends with 11222234 or 11AAAABF
-          * 11XXYYZZ may output a fingerprint ends with 11223344 or 11AABBCC
+          GPG fingerprint pattern; with --ssh, a case-sensitive literal suffix of the full SSH public key line (e.g. love matches keys ending in love)
+      --regex
+          With --ssh, match --pattern as the original upstream regex on the full SSH public key line instead of a literal suffix
   -f, --filter <FILTER>
           OpenCL kernel function for uint h[5] for matching fingerprints
           Ignore the pattern and no estimate is given if this has been set
@@ -83,10 +82,10 @@ Options:
           Example: 1640995200 (Jan 1, 2022 00:00:00 UTC)
       --max-time-range <MAX_TIME_RANGE>
           Maximum time range to search in seconds
-          future_timestamp=true: search from start_timestamp to (start_timestamp + max_time_range)
-          future_timestamp=false: search from (start_timestamp - max_time_range) to start_timestamp [default: 86400000]
+          future_timestamp =  true: search from start_timestamp to (start_timestamp + max_time_range)
+          future_timestamp = false: search from (start_timestamp - max_time_range) to start_timestamp
   -h, --help
-          Print help
+          Print help (see more with '--help')
   -V, --version
           Print version
 
